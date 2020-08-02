@@ -234,6 +234,7 @@ function(run_ctest)
   set(force_build ${initial_force_build})
 
   ctest_start(${model})
+  ctest_submit(PARTS Start RETRY_DELAY 3 RETRY_COUNT 3)
 
   if(MITK_EXTENSIONS)
     foreach(extension ${MITK_EXTENSIONS})
@@ -276,10 +277,13 @@ function(run_ctest)
 
   message("Update MITK")
   ctest_update(SOURCE "${CTEST_CHECKOUT_DIR}" RETURN_VALUE res)
+  ctest_submit(PARTS Update RETRY_DELAY 3 RETRY_COUNT 3)
 
   if(res LESS 0)
     # update error
     math(EXPR build_errors "${build_errors} + 1")
+    ctest_submit(PARTS Done RETRY_DELAY 3 RETRY_COUNT 3)
+    return()
   endif()
 
   # force a build if this is the first run and the build dir is empty
@@ -338,12 +342,9 @@ ${INITIAL_CMAKECACHE_OPTIONS}
 
     ctest_read_custom_files("${CTEST_BINARY_DIRECTORY}")
 
-    ctest_submit(PARTS Configure RETRY_DELAY 3 RETRY_COUNT 3)
-
-    # submit the update results *after* the submitting the Configure info,
-    # otherwise CDash is somehow confused and cannot add the update info
-    # to the superbuild project
-    ctest_submit(PARTS Update RETRY_DELAY 3 RETRY_COUNT 3)
+    # CDash cannot handle two submissions of the Configure part so we spare this
+    # one in favor of the MITK-build Configure part.
+    # ctest_submit(PARTS Configure RETRY_DELAY 3 RETRY_COUNT 3)
 
     check_for_errors()
 
